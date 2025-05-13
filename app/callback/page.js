@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import Callback from './Callback';
+import Callback from './callback';
 
 export default function Page() {
   return (
