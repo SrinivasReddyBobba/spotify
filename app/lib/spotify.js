@@ -8,7 +8,6 @@ const REDIRECT_URI = 'http://127.0.0.1:3000/callback';
 // const CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 // const CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 // const REDIRECT_URI = process.env.SPOTIFY_REDIRECT_URI;
-// console.log(CLIENT_ID,"TEST")
 export async function getValidAccessToken() {
   const accessToken = localStorage.getItem('spotify_access_token');
   const refreshToken = localStorage.getItem('spotify_refresh_token');
