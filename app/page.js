@@ -1,48 +1,50 @@
-// 'use client';
-
-// import { getLoginUrl } from '../app/lib/spotify';
-
-// export default function Home() {
-//   return (
-//     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
-//       <h1 className="text-4xl font-bold mb-6">Spotify Homepage Clone</h1>
-//       <a
-//         href={getLoginUrl()}
-//         className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded"
-//       >
-//         Log in with Spotify
-//       </a>
-//     </div>
-//   );
-// }
-
 
 'use client';
 
 import { useEffect, useState } from 'react';
 import { getLoginUrl } from './lib/spotify';
 import { getUserSavedTracks } from './lib/spotify';
+import { refreshAccessToken } from './lib/auth';
 import TrackCard from './components/TrackCard';
 
 export default function Home() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('spotify_access_token');
-    if (!token) {
-      setIsLoggedIn(false);
-      setLoading(false);
-      return;
-    }
+    async function loadTracks() {
+      let accessToken = localStorage.getItem('spotify_access_token');
+      const expiresAt = localStorage.getItem('spotify_expires_at');
 
-    setIsLoggedIn(true);
+      if (!accessToken || !expiresAt) {
+        setIsLoggedIn(false);
+        setLoading(false);
+        return;
+      }
 
-    async function fetchTracks() {
+      // Check if token is expired
+      if (Date.now() > parseInt(expiresAt)) {
+        try {
+          const newTokenData = await refreshAccessToken();
+          accessToken = newTokenData.access_token;
+
+          localStorage.setItem('spotify_access_token', accessToken);
+          localStorage.setItem('spotify_expires_at', Date.now() + newTokenData.expires_in * 1000);
+        } catch (err) {
+          console.error('Token refresh failed:', err);
+          setIsLoggedIn(false);
+          setLoading(false);
+          return;
+        }
+      }
+
+      setIsLoggedIn(true);
+
       try {
-        const savedTracks = await getUserSavedTracks(token);
+        const savedTracks = await getUserSavedTracks(accessToken);
         setTracks(savedTracks);
       } catch (err) {
         console.error('Error loading tracks:', err);
@@ -52,8 +54,34 @@ export default function Home() {
       }
     }
 
-    fetchTracks();
+    loadTracks();
   }, []);
+  // const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // useEffect(() => {
+  //   const token = localStorage.getItem('spotify_access_token');
+  //   if (!token) {
+  //     setIsLoggedIn(false);
+  //     setLoading(false);
+  //     return;
+  //   }
+
+  //   setIsLoggedIn(true);
+
+  //   async function fetchTracks() {
+  //     try {
+  //       const savedTracks = await getUserSavedTracks(token);
+  //       setTracks(savedTracks);
+  //     } catch (err) {
+  //       console.error('Error loading tracks:', err);
+  //       setError('Failed to load favorite tracks');
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   }
+
+  //   fetchTracks();
+  // }, []);
 
   if (loading) {
     return <p className="text-white p-4">Loading...</p>;
