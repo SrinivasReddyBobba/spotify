@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db('Dinjit');
-    const tokenDoc = await db.collection('tokens').findOne({ user: 'default' });
+    const tokenDoc = await db.collection('tokens').findOne({ display_name: 'Srinivasareddy' });
 
     if (!tokenDoc || !tokenDoc.access_token || Date.now() > tokenDoc.expiry) {
       return NextResponse.json({ error: 'Access token invalid or expired' }, { status: 401 });

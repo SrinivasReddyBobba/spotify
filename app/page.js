@@ -18,8 +18,6 @@ export default function Home() {
 
     checkLoginStatus();
   }, []);
-
-  // if (!isLoggedIn) {
     return (
       <div className="text-white text-center p-6">
         <h2 className="text-xl mb-4">Welcome to Spotify Clone</h2>
@@ -31,9 +29,6 @@ export default function Home() {
         </a>
       </div>
     );
-  // }
-
-  // return null; // No content shown after login
 }
 
 
