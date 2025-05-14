@@ -9,6 +9,35 @@
   --foreground: #171717;
 }
 
+@layer components {
+  .playlist-container {
+    @apply flex flex-wrap justify-center gap-4;
+  }
+
+  .playlist-card {
+    @apply bg-zinc-800 rounded shadow p-4 flex flex-col justify-between h-full;
+    width: 100%;
+  }
+
+  @media (min-width: 640px) {
+    .playlist-card {
+      width: 300px;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .playlist-card {
+      width: 350px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .playlist-card {
+      width: 400px;
+    }
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

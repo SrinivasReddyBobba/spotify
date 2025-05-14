@@ -113,7 +113,7 @@ export default function Callback() {
         <div className="p-6 bg-zinc-900 min-h-screen text-white">
             {tab === 'playlists' ? (
                 playlists.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {playlists.map((playlist) => (
                             <PlaylistCard
                                 key={playlist.id}
@@ -122,6 +122,7 @@ export default function Callback() {
                             />
                         ))}
                     </div>
+
                 ) : (
                     <p className="text-zinc-400 text-center">No playlists available.</p>
                 )
