@@ -27,15 +27,20 @@ export default function Callback() {
   async function fetchData() {
     const code = searchParams.get('code');
     const tokenInStorage = localStorage.getItem('spotify_access_token');
+
+    // 1. Token exists: reuse it
     if (tokenInStorage) {
       await loadData(tokenInStorage);
       return;
     }
 
+    // 2. Code exists: exchange for token
     if (code) {
       try {
         const { access_token } = await getTokens(code);
         localStorage.setItem('spotify_access_token', access_token);
+        
+        // Remove `code` from URL after successful token exchange
         window.history.replaceState({}, document.title, window.location.pathname);
 
         await loadData(access_token);
