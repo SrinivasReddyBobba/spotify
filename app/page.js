@@ -19,15 +19,16 @@ export default function Home() {
     checkLoginStatus();
   }, []);
   return (
-    <div className="text-white text-center p-6">
-      <h2 className="text-xl mb-4">Welcome to Spotify Clone</h2>
-      <a
-        href={getLoginUrl()}
-        className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded"
-      >
-        Log in with Spotify
-      </a>
-    </div>
+   <div className="text-black text-center p-6">
+  <h2 className="text-2xl font-bold mb-4">Welcome to Spotify Clone</h2>
+  <a
+    href={getLoginUrl()}
+    className="bg-green-600 hover:bg-green-500 px-4 py-2 rounded"
+  >
+    Log in with Spotify
+  </a>
+</div>
+
   );
 }
 
