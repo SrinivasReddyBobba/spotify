@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }) {
       <Sidebar toggleSidebar={toggleSidebar} sidebarToggled={sidebarToggled} />
       <div className={`flex-1 ${sidebarToggled ? 'sidebar-toggled' : ''}`}>
         <Topheader toggleSidebar={toggleSidebar} />
-         <div>
+         <div className='main-content'>
         {children}
       </div>
       </div>
