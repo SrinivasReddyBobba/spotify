@@ -24,35 +24,88 @@ export default function Callback() {
   const [userId, setUserId] = useState('');
 
   useEffect(() => {
-    async function fetchData() {
-      if (!code) return;
+  async function fetchData() {
+    const code = searchParams.get('code');
+    const tokenInStorage = localStorage.getItem('spotify_access_token');
+    if (tokenInStorage) {
+      await loadData(tokenInStorage);
+      return;
+    }
 
+    if (code) {
       try {
         const { access_token } = await getTokens(code);
         localStorage.setItem('spotify_access_token', access_token);
+        window.history.replaceState({}, document.title, window.location.pathname);
 
-        const userRes = await axios.get('https://api.spotify.com/v1/me', {
-          headers: { Authorization: `Bearer ${access_token}` },
-        });
-        setUserId(userRes.data.id);
-
-        const [userPlaylists, userTracks] = await Promise.all([
-          getUserPlaylists(access_token),
-          getUserSavedTracks(access_token),
-        ]);
-
-        setPlaylists(userPlaylists);
-        setSavedTracks(userTracks);
+        await loadData(access_token);
       } catch (err) {
-        console.error('Error loading data:', err);
-        setError('Failed to load playlists or tracks');
-      } finally {
+        console.error('Error loading token:', err);
+        setError('Failed to load token');
         setLoading(false);
       }
+    } else {
+      setError('No token or code available');
+      setLoading(false);
     }
+  }
 
-    fetchData();
-  }, [code]);
+  fetchData();
+}, []);
+
+async function loadData(token) {
+  try {
+    const userRes = await axios.get('https://api.spotify.com/v1/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setUserId(userRes.data.id);
+
+    const [userPlaylists, userTracks] = await Promise.all([
+      getUserPlaylists(token),
+      getUserSavedTracks(token),
+    ]);
+
+    setPlaylists(userPlaylists);
+    setSavedTracks(userTracks);
+  } catch (err) {
+    console.error('Error loading data:', err);
+    setError('Failed to load playlists or tracks');
+  } finally {
+    setLoading(false);
+  }
+}
+
+
+//   useEffect(() => {
+//     async function fetchData() {
+//       if (!code) return;
+
+//       try {
+//         const { access_token } = await getTokens(code);
+//         localStorage.setItem('spotify_access_token', access_token);
+
+//         const userRes = await axios.get('https://api.spotify.com/v1/me', {
+//           headers: { Authorization: `Bearer ${access_token}` },
+//         });
+//         setUserId(userRes.data.id);
+
+//         const [userPlaylists, userTracks] = await Promise.all([
+//           getUserPlaylists(access_token),
+//           getUserSavedTracks(access_token),
+//         ]);
+
+//         setPlaylists(userPlaylists);
+//         setSavedTracks(userTracks);
+//       } catch (err) {
+//         console.error('Error loading data:', err);
+//         setError('Failed to load playlists or tracks');
+//       } finally {
+//         setLoading(false);
+//       }
+//     }
+
+//     fetchData();
+//   }, [code]);
 
   const handleDelete = async (playlistId) => {
     try {
