@@ -1,128 +1,256 @@
-
-// callback.js
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import axios from 'axios';
-import { getTokens, getValidAccessToken, getUserPlaylists, getUserSavedTracks } from '../lib/spotify';
+import { useSearchParams, useRouter } from 'next/navigation';
 import PlaylistCard from '../components/PlaylistCard';
 import TrackerList from '../components/TrackerList';
 
 export default function Callback() {
   const searchParams = useSearchParams();
-  const tab = searchParams.get('tab') || 'playlists'; // default to playlists
+  const router = useRouter();
+  const tab = searchParams.get('tab') || 'playlists';
   const code = searchParams.get('code');
 
   const [loading, setLoading] = useState(true);
   const [playlists, setPlaylists] = useState([]);
   const [savedTracks, setSavedTracks] = useState([]);
   const [error, setError] = useState('');
-  const [userId, setUserId] = useState('');
 
   useEffect(() => {
-    async function fetchData() {
-      const code = searchParams.get('code');
-      const tokenInStorage = localStorage.getItem('spotify_access_token');
+    async function authenticateAndFetch() {
+      setLoading(true);
+      try {
+        // Exchange code for tokens and set session cookie
+        if (code) {
+          await fetch('/api/authtoken', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+          });
 
-      if (tokenInStorage) {
-        // Token is in storage, proceed with loading data
-        await loadData(tokenInStorage);
-        return;
-      }
-
-      if (code) {
-        try {
-          const { access_token } = await getTokens(code);
-          localStorage.setItem('spotify_access_token', access_token);
-          window.history.replaceState({}, document.title, window.location.pathname);
-          await loadData(access_token);
-        } catch (err) {
-          console.error('Error loading token:', err);
-          setError('Failed to load token');
-          setLoading(false);
+          // Clean up URL (remove code param)
+          router.replace('/callback?tab=' + tab);
         }
-      } else {
-        setError('No token or code available');
+
+        const accessTokenRes = await fetch('/api/authtoken');
+        const { accessToken } = await accessTokenRes.json();
+
+        if (!accessToken) {
+          throw new Error('Missing access token');
+        }
+
+        const [playlistRes, savedTrackRes] = await Promise.all([
+          fetch('/api/lib/playlist'),
+          fetch('/api/lib/saved-tracks'),
+        ]);
+
+        const playlistsData = await playlistRes.json();
+        const savedTracksData = await savedTrackRes.json();
+
+        setPlaylists(playlistsData);
+        setSavedTracks(savedTracksData);
+      } catch (err) {
+        console.error('Error:', err);
+        setError('Authentication failed or Spotify API error');
+      } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
-  }, [userId]);
+    authenticateAndFetch();
+  }, [code, tab]);
 
-  async function loadData(accessToken) {
-    const token = await getValidAccessToken();
-    if (!token) {
-      setError('Token expired and refresh failed. Please log in again.');
-      setLoading(false);
-      return;
-    }
-
+  const handleDeletePlaylist = async (id) => {
     try {
-      const userRes = await axios.get('https://api.spotify.com/v1/me', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUserId(userRes.data.id);
-
-      const [userPlaylists, userTracks] = await Promise.all([
-        getUserPlaylists(token),
-        getUserSavedTracks(token),
-      ]);
-
-      setPlaylists(userPlaylists);
-      setSavedTracks(userTracks);
+      await fetch(`/api/spotify/playlists/${id}`, { method: 'DELETE' });
+      setPlaylists((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
-      console.error('Error loading data:', err);
-      setError('Failed to load playlists or tracks');
-    } finally {
-      setLoading(false);
+      console.error('Error deleting playlist:', err);
     }
-  }
+  };
+
+  const handleDeleteTrack = async (id) => {
+    try {
+      await fetch(`/api/spotify/saved-tracks/${id}`, { method: 'DELETE' });
+      setSavedTracks((prev) => prev.filter((track) => track.id !== id));
+    } catch (err) {
+      console.error('Error deleting track:', err);
+    }
+  };
 
   if (loading) return <p className="text-white p-4">Loading...</p>;
   if (error) return <p className="text-red-500 p-4">{error}</p>;
 
   return (
-    <>
-      <div className="p-6 bg-zinc-900 min-h-screen text-white">
-        {tab === 'playlists' && (
-          <>
-            <h1 className="text-3xl font-bold mb-6">Your Playlists</h1>
-            {playlists.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                {playlists.map((playlist) => (
-                  <PlaylistCard key={playlist.id} playlist={playlist} />
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-48 text-center text-zinc-400">
-                <p>No playlists available. Please add playlists to your Spotify account.</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === 'saved' && (
-          <>
-            {savedTracks.length > 0 ? (
-              <TrackerList
-                tracks={savedTracks}
-                onPlay={(uri) =>
-                  window.open(`https://open.spotify.com/track/${uri.split(':')[2]}`, '_blank')
-                }
-              />
-            ) : (
-              <div className="flex items-center justify-center h-48 text-center text-zinc-400">
-                <p>No saved tracks found. Please add tracks to your Spotify library.</p>
-              </div>
-            )}
-          </>
-        )}
+    <div className="p-6 bg-zinc-900 min-h-screen text-white">
+      <div className="flex space-x-4 mb-6">
+        <button
+          className={`px-4 py-2 rounded ${
+            tab === 'playlists' ? 'bg-green-600' : 'bg-zinc-700'
+          }`}
+          onClick={() => router.push('/callback?tab=playlists')}
+        >
+          Playlists
+        </button>
+        <button
+          className={`px-4 py-2 rounded ${
+            tab === 'saved' ? 'bg-green-600' : 'bg-zinc-700'
+          }`}
+          onClick={() => router.push('/callback?tab=saved')}
+        >
+          Saved Tracks
+        </button>
       </div>
-    </>
+
+      {tab === 'playlists' ? (
+        playlists.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {playlists.map((playlist) => (
+              <PlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                handleDelete={handleDeletePlaylist}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-zinc-400 text-center">No playlists available.</p>
+        )
+      ) : savedTracks.length > 0 ? (
+        <TrackerList tracks={savedTracks} onPlay={(uri) => {
+          window.open(`https://open.spotify.com/track/${uri.split(':')[2]}`, '_blank');
+        }} onDelete={handleDeleteTrack} />
+      ) : (
+        <p className="text-zinc-400 text-center">No saved tracks found.</p>
+      )}
+    </div>
   );
 }
+
+// callback.js
+// 'use client';
+
+// import { useEffect, useState } from 'react';
+// import { useSearchParams } from 'next/navigation';
+// import axios from 'axios';
+// import { getTokens, getValidAccessToken, getUserPlaylists, getUserSavedTracks } from '../lib/spotify';
+// import PlaylistCard from '../components/PlaylistCard';
+// import TrackerList from '../components/TrackerList';
+
+// export default function Callback() {
+//   const searchParams = useSearchParams();
+//   const tab = searchParams.get('tab') || 'playlists'; // default to playlists
+//   const code = searchParams.get('code');
+
+//   const [loading, setLoading] = useState(true);
+//   const [playlists, setPlaylists] = useState([]);
+//   const [savedTracks, setSavedTracks] = useState([]);
+//   const [error, setError] = useState('');
+//   const [userId, setUserId] = useState('');
+
+//   useEffect(() => {
+//     async function fetchData() {
+//       const code = searchParams.get('code');
+//       const tokenInStorage = localStorage.getItem('spotify_access_token');
+
+//       if (tokenInStorage) {
+//         // Token is in storage, proceed with loading data
+//         await loadData(tokenInStorage);
+//         return;
+//       }
+
+//       if (code) {
+//         try {
+//           const { access_token } = await getTokens(code);
+//           localStorage.setItem('spotify_access_token', access_token);
+//           window.history.replaceState({}, document.title, window.location.pathname);
+//           await loadData(access_token);
+//         } catch (err) {
+//           console.error('Error loading token:', err);
+//           setError('Failed to load token');
+//           setLoading(false);
+//         }
+//       } else {
+//         setError('No token or code available');
+//         setLoading(false);
+//       }
+//     }
+
+//     fetchData();
+//   }, [userId]);
+
+//   async function loadData(accessToken) {
+//     const token = await getValidAccessToken();
+//     if (!token) {
+//       setError('Token expired and refresh failed. Please log in again.');
+//       setLoading(false);
+//       return;
+//     }
+
+//     try {
+//       const userRes = await axios.get('https://api.spotify.com/v1/me', {
+//         headers: { Authorization: `Bearer ${token}` },
+//       });
+//       setUserId(userRes.data.id);
+
+//       const [userPlaylists, userTracks] = await Promise.all([
+//         getUserPlaylists(token),
+//         getUserSavedTracks(token),
+//       ]);
+
+//       setPlaylists(userPlaylists);
+//       setSavedTracks(userTracks);
+//     } catch (err) {
+//       console.error('Error loading data:', err);
+//       setError('Failed to load playlists or tracks');
+//     } finally {
+//       setLoading(false);
+//     }
+//   }
+
+//   if (loading) return <p className="text-white p-4">Loading...</p>;
+//   if (error) return <p className="text-red-500 p-4">{error}</p>;
+
+//   return (
+//     <>
+//       <div className="p-6 bg-zinc-900 min-h-screen text-white">
+//         {tab === 'playlists' && (
+//           <>
+//             <h1 className="text-3xl font-bold mb-6">Your Playlists</h1>
+//             {playlists.length > 0 ? (
+//               <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+//                 {playlists.map((playlist) => (
+//                   <PlaylistCard key={playlist.id} playlist={playlist} />
+//                 ))}
+//               </div>
+//             ) : (
+//               <div className="flex items-center justify-center h-48 text-center text-zinc-400">
+//                 <p>No playlists available. Please add playlists to your Spotify account.</p>
+//               </div>
+//             )}
+//           </>
+//         )}
+
+//         {tab === 'saved' && (
+//           <>
+//             {savedTracks.length > 0 ? (
+//               <TrackerList
+//                 tracks={savedTracks}
+//                 onPlay={(uri) =>
+//                   window.open(`https://open.spotify.com/track/${uri.split(':')[2]}`, '_blank')
+//                 }
+//               />
+//             ) : (
+//               <div className="flex items-center justify-center h-48 text-center text-zinc-400">
+//                 <p>No saved tracks found. Please add tracks to your Spotify library.</p>
+//               </div>
+//             )}
+//           </>
+//         )}
+//       </div>
+//     </>
+//   );
+// }
 
 
 
