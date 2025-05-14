@@ -25,6 +25,8 @@ export function getLoginUrl() {
   return `https://accounts.spotify.com/authorize?${query}`;
 }
 
+
+
 // export async function getAccessTokenFromServer() {
 //   const res = await fetch('/api/authtokenrefresh');
 //   const data = await res.json();
