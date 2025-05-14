@@ -89,6 +89,7 @@ export default function Home() {
 
   if (!isLoggedIn) {
     return (
+      <>
       <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white">
         <h1 className="text-4xl font-bold mb-6">Spotify Homepage Clone</h1>
         <a
@@ -98,6 +99,7 @@ export default function Home() {
           Log in with Spotify
         </a>
       </div>
+      </>
     );
   }
 

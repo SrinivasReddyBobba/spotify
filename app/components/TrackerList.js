@@ -44,7 +44,7 @@ export default function TrackerList({ tracks, onPlay, onDelete }) {
               <p>{track.name}</p>
               <p className="text-sm text-zinc-400">{track.artists[0].name}</p>
             </div>
-            <div className="flex space-x-2">
+            <div className="mt-4 flex space-x-2">
               <button
                 onClick={() => onPlay(track.uri)}
                 className="bg-green-500 px-3 py-1 rounded hover:bg-green-400"

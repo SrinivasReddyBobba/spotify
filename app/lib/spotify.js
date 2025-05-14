@@ -27,6 +27,29 @@ export function getLoginUrl() {
 }
 
 
+// export async function getTokens(code) {
+//   const body = querystring.stringify({
+//     grant_type: 'authorization_code',
+//     code,
+//     redirect_uri: REDIRECT_URI,
+//   });
+
+//   try {
+//     const response = await axios.post('https://accounts.spotify.com/api/token', body, {
+//       headers: {
+//         'Content-Type': 'application/x-www-form-urlencoded',
+//         Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+//       },
+//     });
+
+//     console.log('Token response:', response.data);
+//     return response.data;
+//   } catch (err) {
+//     console.error('❌ Error fetching tokens:', err.response?.data || err.message);
+//     throw new Error('Failed to get tokens');
+//   }
+// }
+
 export async function getTokens(code) {
   const body = querystring.stringify({
     grant_type: 'authorization_code',
@@ -42,13 +65,58 @@ export async function getTokens(code) {
       },
     });
 
-    console.log('Token response:', response.data);
+    const { access_token, refresh_token, expires_in } = response.data;
+
+    localStorage.setItem('spotify_access_token', access_token);
+    localStorage.setItem('spotify_refresh_token', refresh_token);
+    localStorage.setItem('spotify_token_expiry', (Date.now() + expires_in * 1000).toString());
+
     return response.data;
   } catch (err) {
     console.error('❌ Error fetching tokens:', err.response?.data || err.message);
     throw new Error('Failed to get tokens');
   }
 }
+
+
+export async function getValidAccessToken() {
+  const accessToken = localStorage.getItem('spotify_access_token');
+  const refreshToken = localStorage.getItem('spotify_refresh_token');
+  const expiry = parseInt(localStorage.getItem('spotify_token_expiry'), 10);
+
+  if (!accessToken || !refreshToken) return null;
+
+  if (Date.now() < expiry) {
+    return accessToken;
+  }
+
+  // Refresh token
+  try {
+    const body = querystring.stringify({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+
+    const response = await axios.post('https://accounts.spotify.com/api/token', body, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: 'Basic ' + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64'),
+      },
+    });
+
+    const newAccessToken = response.data.access_token;
+    const expiresIn = response.data.expires_in;
+
+    localStorage.setItem('spotify_access_token', newAccessToken);
+    localStorage.setItem('spotify_token_expiry', (Date.now() + expiresIn * 1000).toString());
+
+    return newAccessToken;
+  } catch (error) {
+    console.error('🔁 Failed to refresh access token:', error.response?.data || error.message);
+    return null;
+  }
+}
+
 
 
 export async function getUserPlaylists(accessToken) {
